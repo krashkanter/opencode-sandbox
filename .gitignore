@@ -1,0 +1,18 @@
+# Secrets — never commit. The gateway key lives here and only here.
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# opencode runtime state (sessions, sqlite db, logs)
+opencode/data/
+opencode/auth.json
+
+# Mounted work area
+workspace/*
+!workspace/.gitkeep
+
+# OS / editor noise
+.DS_Store
+Thumbs.db

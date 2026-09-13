@@ -1,0 +1,50 @@
+{
+  "$schema": "https://raw.githubusercontent.com/devcontainers/spec/main/schemas/devContainer.schema.json",
+  "name": "opencode-sandbox",
+
+  "build": {
+    "dockerfile": "Dockerfile",
+    "args": {
+      "VARIANT": "22-trixie",
+      "OPENCODE_VERSION": "1.18.30"
+    }
+  },
+
+  // iptables/ipset need NET_ADMIN; nothing else is granted.
+  "runArgs": [
+    "--cap-add=NET_ADMIN",
+    "--cap-add=NET_RAW",
+    "--pids-limit=512"
+  ],
+
+  "containerEnv": {
+    "ALLOWED_DOMAINS": "tokenharbor.ai opencode.ai registry.npmjs.org bun.sh api.github.com github.com objects.githubusercontent.com",
+    "ENABLE_FIREWALL": "1"
+  },
+
+  // Read from the host env at attach time so the key never enters this file.
+  "remoteEnv": {
+    "TOKENHARBOR_API_KEY": "${localEnv:TOKENHARBOR_API_KEY}"
+  },
+
+  // Only ./workspace is exposed — not the whole repo, and not the host home dir.
+  "workspaceMount": "source=${localWorkspaceFolder}/workspace,target=/workspace,type=bind,consistency=cached",
+  "workspaceFolder": "/workspace",
+
+  "mounts": [
+    "source=${localWorkspaceFolder}/opencode/opencode.jsonc,target=/home/node/.config/opencode/opencode.jsonc,type=bind,readonly",
+    "source=opencode-sandbox-state,target=/home/node/.local/share/opencode,type=volume"
+  ],
+
+  // Re-resolve the allowlist on every start: DNS for these hosts rotates.
+  "postStartCommand": "sudo /usr/local/bin/init-firewall.sh",
+
+  "remoteUser": "node",
+  "overrideCommand": true,
+
+  "customizations": {
+    "vscode": {
+      "extensions": ["ms-azuretools.vscode-docker"]
+    }
+  }
+}

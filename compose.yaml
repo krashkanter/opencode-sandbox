@@ -1,0 +1,66 @@
+# Hardened sandbox for running opencode against the Token Harbor gateway.
+#   docker compose run --rm opencode
+name: opencode-sandbox
+
+services:
+  opencode:
+    build:
+      context: ./.devcontainer
+      dockerfile: Dockerfile
+      args:
+        OPENCODE_VERSION: "1.18.30"
+    image: opencode-sandbox:local
+
+    # Root at entry only, to program netfilter. entrypoint.sh drops to `node`
+    # via setpriv before the agent is ever exec'd.
+    user: "0:0"
+    init: true
+    stdin_open: true
+    tty: true
+
+    env_file:
+      - .env
+    environment:
+      # Fails fast with a readable message instead of a confusing 401.
+      TOKENHARBOR_API_KEY: ${TOKENHARBOR_API_KEY:?set TOKENHARBOR_API_KEY in .env}
+      OPENCODE_MODEL: ${OPENCODE_MODEL:-tokenharbor/deepseek-v4.1-flash:free}
+      ALLOWED_DOMAINS: ${ALLOWED_DOMAINS:-tokenharbor.ai opencode.ai registry.npmjs.org bun.sh api.github.com github.com}
+      ENABLE_FIREWALL: "1"
+      FIREWALL_REQUIRED: "1"
+
+    # --- privileges -------------------------------------------------------
+    # Everything off, then back only what iptables/ipset genuinely need.
+    cap_drop:
+      - ALL
+    cap_add:
+      # iptables/ipset
+      - NET_ADMIN
+      - NET_RAW
+      # consumed by entrypoint.sh setpriv, then gone once the agent starts
+      - SETUID
+      - SETGID
+    security_opt:
+      - no-new-privileges:true
+
+    # --- resource ceilings ------------------------------------------------
+    # A runaway agent (or a fork bomb from a dependency) hits a wall here.
+    cpus: ${SANDBOX_CPUS:-2}
+    mem_limit: ${SANDBOX_MEMORY:-4g}
+    pids_limit: 512
+
+    # --- filesystem -------------------------------------------------------
+    volumes:
+      # The only host path the agent can touch. Scope this deliberately.
+      - ./workspace:/workspace:rw
+      # Provider/model config, read-only — the agent cannot rewrite its own gateway.
+      - ./opencode/opencode.jsonc:/home/node/.config/opencode/opencode.jsonc:ro
+      # Sessions and sqlite state survive restarts without landing on the host.
+      - opencode-state:/home/node/.local/share/opencode
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=512m
+
+    working_dir: /workspace
+    command: ["opencode"]
+
+volumes:
+  opencode-state:

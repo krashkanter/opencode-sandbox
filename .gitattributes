@@ -1,0 +1,9 @@
+# The container runs Linux. A CRLF checkout on Windows produces `#!/usr/bin/env bash\r`
+# and the scripts die with "bad interpreter". Force LF for everything executable.
+* text=auto eol=lf
+
+*.sh      text eol=lf
+Dockerfile text eol=lf
+*.yaml    text eol=lf
+*.json    text eol=lf
+*.jsonc   text eol=lf
