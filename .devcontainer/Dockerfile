@@ -1,4 +1,7 @@
 # syntax=docker/dockerfile:1
+#
+# Build context is the REPOSITORY ROOT (not this directory), so the default
+# provider config can be baked in. .dockerignore whitelists what may enter.
 
 # Microsoft's official Dev Containers base. Ships Node and a non-root `node`
 # user, so we inherit upstream's patching cadence instead of curating a distro.
@@ -41,7 +44,7 @@ RUN curl -fsSL https://bun.sh/install | bash -s "bun-v${BUN_VERSION}" \
 # The firewall needs root via iptables; the agent itself must never have it.
 # Narrow sudoers entry so `node` may run the firewall script and nothing else.
 # (Used by the Dev Containers path; the Compose path drops root via setpriv.)
-COPY init-firewall.sh entrypoint.sh /usr/local/bin/
+COPY .devcontainer/init-firewall.sh .devcontainer/entrypoint.sh /usr/local/bin/
 RUN chmod 0755 /usr/local/bin/init-firewall.sh /usr/local/bin/entrypoint.sh \
     && echo 'node ALL=(root) NOPASSWD: /usr/local/bin/init-firewall.sh' \
         > /etc/sudoers.d/init-firewall \
@@ -52,6 +55,12 @@ ENV XDG_CONFIG_HOME=/home/node/.config \
     XDG_DATA_HOME=/home/node/.local/share
 RUN mkdir -p "$XDG_CONFIG_HOME/opencode" "$XDG_DATA_HOME/opencode" \
     && chown -R node:node /home/node/.config /home/node/.local
+
+# Default provider config, so a plain `docker run` works without mounting
+# anything. Holds no secret: the key is read from the environment at runtime.
+# Compose still mounts its own copy read-only over this path.
+COPY --chown=node:node opencode/opencode.jsonc \
+     /home/node/.config/opencode/opencode.jsonc
 
 USER node
 WORKDIR /workspace

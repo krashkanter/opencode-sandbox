@@ -1,0 +1,15 @@
+# Deny everything, then re-include only what the image needs.
+#
+# A whitelist rather than a blacklist: the build context is now the repo root,
+# which contains .env. A new secret-bearing file must never be able to enter the
+# image just because nobody remembered to add it here.
+*
+
+!.devcontainer
+.devcontainer/*.md
+
+# Only the provider config from this directory — never opencode/auth.json or
+# opencode/data/, which hold real credentials and session state locally.
+!opencode
+opencode/*
+!opencode/opencode.jsonc

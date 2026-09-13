@@ -47,11 +47,12 @@ jobs:
             org.opencontainers.image.title=opencode-sandbox
             org.opencontainers.image.description=opencode on the Token Harbor gateway, in a hardened container
 
-      # Only .devcontainer is the build context — the image never sees .env,
-      # the workspace, or anything else in the repo.
+      # Context is the repo root so the default config can be baked in;
+      # .dockerignore whitelists what may enter, so .env cannot.
       - uses: docker/build-push-action@v6
         with:
-          context: .devcontainer
+          context: .
+          file: .devcontainer/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}

@@ -61,26 +61,52 @@ mounts only `./workspace`, and re-resolves the allowlist on every start via
 Export `TOKENHARBOR_API_KEY` on the host first — the devcontainer reads it from
 your environment rather than from `.env`.
 
-## Pulling the image instead of building it
+## Pull and run — no repository or Compose required
 
-CI builds the image and pushes it to GHCR (`.github/workflows/publish-image.yml`),
-multi-arch for amd64 and arm64:
+The published image includes the non-secret Token Harbor provider configuration
+and supports both `linux/amd64` and `linux/arm64`. Your key is supplied only
+when the container starts.
+
+Create a working folder and a local token file:
 
 ```bash
-docker compose -f compose.yaml -f compose.pull.yaml run --rm opencode
+mkdir opencode-work && cd opencode-work
+printf 'TOKENHARBOR_API_KEY=thk_live_replace_me\n' > .env
 ```
 
-> **The image on its own is not the sandbox.**
->
-> Every security property here — the egress allowlist, dropped capabilities,
-> `no-new-privileges`, the read-only config mount, the resource ceilings — comes
-> from `compose.yaml`, not from the image. A plain `docker run` of this image
-> starts unprivileged, cannot program netfilter, and would therefore run the
-> agent with **unrestricted network access**.
->
-> Because a sandbox that silently is not one is worse than no sandbox, the
-> entrypoint refuses to start in that situation and tells you how to launch it
-> properly. Override only with `FIREWALL_REQUIRED=0`, and only deliberately.
+Keep `.env` private and never commit or send it. Then pull and run the hardened
+container:
+
+```bash
+docker pull ghcr.io/krashkanter/opencode-sandbox:latest
+
+docker run -it --rm --init \
+  --user 0:0 \
+  --cap-drop ALL \
+  --cap-add NET_ADMIN --cap-add NET_RAW \
+  --cap-add SETUID --cap-add SETGID \
+  --security-opt no-new-privileges:true \
+  --cpus 2 --memory 4g --pids-limit 512 \
+  --tmpfs /tmp:rw,noexec,nosuid,size=256m \
+  --tmpfs /run/opencode:rw,exec,nosuid,mode=1777,size=256m \
+  --env-file .env \
+  --mount type=bind,src="$(pwd)",dst=/workspace \
+  --mount type=volume,src=opencode-sandbox-state,dst=/home/node/.local/share/opencode \
+  ghcr.io/krashkanter/opencode-sandbox:latest
+```
+
+The bind mount is the only host folder the agent can access. The named volume
+persists its session state without putting it in that folder. To start fresh,
+replace `opencode-sandbox-state` with a new volume name.
+
+The command intentionally starts as root only long enough to apply the
+network allowlist, then drops to the unprivileged `node` user before opencode
+starts. Do not omit the capabilities, `no-new-privileges`, or the two `tmpfs`
+mounts. A plain `docker run ghcr.io/…` is rejected rather than silently running
+without the firewall.
+
+For PowerShell, replace `$(pwd)` with `${PWD}`. In Git Bash, the command above
+works as written.
 
 ## Configuration
 

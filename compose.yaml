@@ -5,8 +5,8 @@ name: opencode-sandbox
 services:
   opencode:
     build:
-      context: ./.devcontainer
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: .devcontainer/Dockerfile
       args:
         OPENCODE_VERSION: "1.18.30"
     image: opencode-sandbox:local
