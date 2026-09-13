@@ -25,6 +25,22 @@ cfg="$HOME/.config/opencode/opencode.jsonc"
 [ -n "${TOKENHARBOR_API_KEY:-}" ] && ok "gateway key present (${#TOKENHARBOR_API_KEY} chars)" \
                                   || bad "TOKENHARBOR_API_KEY not set"
 
+echo "== native library loading =="
+# opencode's TUI extracts a native .so and dlopen()s it. /tmp is noexec, so this
+# has to land in an exec-permitted TMPDIR or the TUI dies at startup.
+if cp /bin/true /tmp/.exectest 2>/dev/null && /tmp/.exectest 2>/dev/null; then
+    bad "/tmp is executable — noexec hardening lost"
+else
+    ok "/tmp is noexec"
+fi
+rm -f /tmp/.exectest
+if [ -n "${TMPDIR:-}" ] && cp /bin/true "$TMPDIR/.exectest" 2>/dev/null && "$TMPDIR/.exectest" 2>/dev/null; then
+    ok "TMPDIR=$TMPDIR is exec-permitted (native .so can load)"
+else
+    bad "TMPDIR=${TMPDIR:-unset} cannot exec — the TUI will fail to start"
+fi
+rm -f "${TMPDIR:-/tmp}/.exectest"
+
 echo "== egress allowlist =="
 if curl -s -o /dev/null --connect-timeout 5 https://example.com 2>/dev/null; then
     bad "example.com reachable — allowlist NOT enforcing"

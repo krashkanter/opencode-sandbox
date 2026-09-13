@@ -26,6 +26,8 @@ services:
       OPENCODE_MODEL: ${OPENCODE_MODEL:-tokenharbor/deepseek-v4.1-flash:free}
       ALLOWED_DOMAINS: ${ALLOWED_DOMAINS:-tokenharbor.ai opencode.ai registry.npmjs.org bun.sh api.github.com github.com}
       ENABLE_FIREWALL: "1"
+      # Native-library extraction target; /tmp is noexec.
+      TMPDIR: /run/opencode
       FIREWALL_REQUIRED: "1"
 
     # --- privileges -------------------------------------------------------
@@ -56,8 +58,13 @@ services:
       - ./opencode/opencode.jsonc:/home/node/.config/opencode/opencode.jsonc:ro
       # Sessions and sqlite state survive restarts without landing on the host.
       - opencode-state:/home/node/.local/share/opencode
+    # opencode's TUI (OpenTUI) extracts a native .so at startup and dlopen()s it.
+    # A blanket noexec /tmp kills that with "failed to map segment from shared
+    # object", so /tmp keeps noexec and the runtime gets one narrow exec-permitted
+    # scratch dir instead of the hardening being dropped wholesale.
     tmpfs:
-      - /tmp:rw,noexec,nosuid,size=512m
+      - /tmp:rw,noexec,nosuid,size=256m
+      - /run/opencode:rw,exec,nosuid,mode=1777,size=256m
 
     working_dir: /workspace
     command: ["opencode"]

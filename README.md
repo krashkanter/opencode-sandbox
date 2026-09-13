@@ -115,6 +115,11 @@ workspace/            the only host directory the agent can see
 - Privilege drop uses `setpriv`, not `sudo`: `sudo` needs setuid escalation,
   which `no-new-privileges` forbids. This costs `CAP_SETUID`/`CAP_SETGID`, which
   are consumed during startup and gone before the agent runs.
+- `/tmp` is mounted `noexec`, but opencode's TUI (OpenTUI) extracts a native `.so`
+  at startup and `dlopen()`s it — which `noexec` blocks with *"failed to map
+  segment from shared object"*. Rather than dropping the hardening, `TMPDIR`
+  points at a separate small exec-permitted tmpfs (`/run/opencode`), so generic
+  writes to `/tmp` still cannot be executed. `scripts/verify.sh` asserts both.
 - If the firewall fails to come up the container refuses to start. Override with
   `FIREWALL_REQUIRED=0` only if you understand what you are giving up.
 
