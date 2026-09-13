@@ -65,17 +65,7 @@ your environment rather than from `.env`.
 
 The published image includes the non-secret Token Harbor provider configuration
 and supports both `linux/amd64` and `linux/arm64`. Your key is supplied only
-when the container starts.
-
-Create a working folder and a local token file:
-
-```bash
-mkdir opencode-work && cd opencode-work
-printf 'TOKENHARBOR_API_KEY=thk_live_replace_me\n' > .env
-```
-
-Keep `.env` private and never commit or send it. Then pull and run the hardened
-container:
+when the container starts. Replace `XXX` below with your Token Harbor key:
 
 ```bash
 docker pull ghcr.io/krashkanter/opencode-sandbox:latest
@@ -89,11 +79,17 @@ docker run -it --rm --init \
   --cpus 2 --memory 4g --pids-limit 512 \
   --tmpfs /tmp:rw,noexec,nosuid,size=256m \
   --tmpfs /run/opencode:rw,exec,nosuid,mode=1777,size=256m \
-  --env-file .env \
+  --env TOKENHARBOR_API_KEY=XXX \
   --mount type=bind,src="$(pwd)",dst=/workspace \
   --mount type=volume,src=opencode-sandbox-state,dst=/home/node/.local/share/opencode \
   ghcr.io/krashkanter/opencode-sandbox:latest
 ```
+
+`--env TOKENHARBOR_API_KEY=XXX` passes the token to this container only; it is
+not stored in the image. It can, however, be saved in shell history or exposed
+to someone who can inspect the running container. For a less exposed option,
+put `TOKENHARBOR_API_KEY=XXX` in a local `.env` file, protect that file, and
+replace the `--env ...` line above with `--env-file .env`.
 
 The bind mount is the only host folder the agent can access. The named volume
 persists its session state without putting it in that folder. To start fresh,
