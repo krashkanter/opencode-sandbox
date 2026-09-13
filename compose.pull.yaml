@@ -1,0 +1,10 @@
+# Use the prebuilt GHCR image instead of building locally:
+#   docker compose -f compose.yaml -f compose.pull.yaml run --rm opencode
+#
+# Every hardening setting in compose.yaml still applies — this override only
+# changes where the image comes from. The image alone is not the sandbox.
+services:
+  opencode:
+    build: !reset null
+    image: ghcr.io/krashkanter/opencode-sandbox:latest
+    pull_policy: always

@@ -19,7 +19,10 @@
 
   "containerEnv": {
     "ALLOWED_DOMAINS": "tokenharbor.ai opencode.ai registry.npmjs.org bun.sh api.github.com github.com objects.githubusercontent.com",
-    "ENABLE_FIREWALL": "1"
+    "ENABLE_FIREWALL": "1",
+    // postStartCommand applies the firewall after the container is up, so the
+    // entrypoint must not refuse an unprivileged start on this path.
+    "SANDBOX_FIREWALL_DEFERRED": "1"
   },
 
   // Read from the host env at attach time so the key never enters this file.

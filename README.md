@@ -61,6 +61,27 @@ mounts only `./workspace`, and re-resolves the allowlist on every start via
 Export `TOKENHARBOR_API_KEY` on the host first — the devcontainer reads it from
 your environment rather than from `.env`.
 
+## Pulling the image instead of building it
+
+CI builds the image and pushes it to GHCR (`.github/workflows/publish-image.yml`),
+multi-arch for amd64 and arm64:
+
+```bash
+docker compose -f compose.yaml -f compose.pull.yaml run --rm opencode
+```
+
+> **The image on its own is not the sandbox.**
+>
+> Every security property here — the egress allowlist, dropped capabilities,
+> `no-new-privileges`, the read-only config mount, the resource ceilings — comes
+> from `compose.yaml`, not from the image. A plain `docker run` of this image
+> starts unprivileged, cannot program netfilter, and would therefore run the
+> agent with **unrestricted network access**.
+>
+> Because a sandbox that silently is not one is worse than no sandbox, the
+> entrypoint refuses to start in that situation and tells you how to launch it
+> properly. Override only with `FIREWALL_REQUIRED=0`, and only deliberately.
+
 ## Configuration
 
 Everything lives in `.env`:
@@ -120,6 +141,10 @@ workspace/            the only host directory the agent can see
   segment from shared object"*. Rather than dropping the hardening, `TMPDIR`
   points at a separate small exec-permitted tmpfs (`/run/opencode`), so generic
   writes to `/tmp` still cannot be executed. `scripts/verify.sh` asserts both.
+- The entrypoint refuses an unprivileged start unless something else is known to
+  have applied the firewall. Dev Containers opts in with
+  `SANDBOX_FIREWALL_DEFERRED=1` because its `postStartCommand` applies the rules
+  after the container is already up.
 - If the firewall fails to come up the container refuses to start. Override with
   `FIREWALL_REQUIRED=0` only if you understand what you are giving up.
 
